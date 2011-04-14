@@ -86,6 +86,7 @@ int main(int argc, char** argv)
         StringOption dimacs ("MAIN", "dimacs", "If given, stop after preprocessing and write the result to this file.");
         IntOption    cpu_lim("MAIN", "cpu-lim","Limit on CPU time allowed in seconds.\n", INT32_MAX, IntRange(0, INT32_MAX));
         IntOption    mem_lim("MAIN", "mem-lim","Limit on memory usage in megabytes.\n", INT32_MAX, IntRange(0, INT32_MAX));
+        StringOption polarity_hints("HINT", "polarity-hints","Read variable polarities from file.");
 
         parseOptions(argc, argv, true);
         
@@ -145,6 +146,36 @@ int main(int argc, char** argv)
         double parsed_time = cpuTime();
         if (S.verbosity > 0)
             printf("|  Parse time:           %12.2f s                                       |\n", parsed_time - initial_time);
+
+        // set default polarities, if requested
+        if(polarity_hints != NULL){
+            gzFile hints_in = gzopen(polarity_hints, "rb");
+            StreamBuffer hints_buffer(hints_in);
+
+            while(!isEof(hints_buffer)){
+                int v = parseInt(hints_buffer) - 1;
+
+                if(v < 0 || v >= S.nVars()){
+                    printf("ERROR! Variable index invalid.\n");
+                    exit(1);
+                }
+
+                int p = parseInt(hints_buffer);
+
+                if(p == 0){
+                    S.setPolarity(v, l_False);
+                }
+                else if(p == 1){
+                    S.setPolarity(v, l_True);
+                }
+                else{
+                    printf("ERROR! Polarity must be 0 or 1.\n");
+                    exit(1);
+                }
+
+                skipWhitespace(hints_buffer);
+            }
+        }
 
         // Change to signal-handlers that will only notify the solver and allow it to terminate
         // voluntarily:
