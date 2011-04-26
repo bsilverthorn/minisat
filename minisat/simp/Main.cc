@@ -154,26 +154,25 @@ int main(int argc, char** argv)
 
             while(!isEof(hints_buffer)){
                 int v = parseInt(hints_buffer) - 1;
-
-                if(v < 0 || v >= S.nVars()){
-                    printf("ERROR! Variable index invalid.\n");
-                    exit(1);
-                }
-
                 int p = parseInt(hints_buffer);
 
-                if(p == 0){
-                    S.setPolarity(v, l_False);
-                }
-                else if(p == 1){
-                    S.setPolarity(v, l_True);
-                }
-                else{
-                    printf("ERROR! Polarity must be 0 or 1.\n");
-                    exit(1);
-                }
-
                 skipWhitespace(hints_buffer);
+
+                if(v < 0 || v >= S.nVars()){
+                    printf("WARNING! Variable index invalid.\n");
+                }
+                else {
+                    if(p == 0){
+                        S.setPolarity(v, l_False);
+                    }
+                    else if(p == 1){
+                        S.setPolarity(v, l_True);
+                    }
+                    else{
+                        printf("ERROR! Polarity must be 0 or 1.\n");
+                        exit(1);
+                    }
+                }
             }
         }
 
