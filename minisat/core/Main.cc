@@ -84,6 +84,8 @@ int main(int argc, char** argv)
         IntOption    verb   ("MAIN", "verb",   "Verbosity level (0=silent, 1=some, 2=more).", 1, IntRange(0, 2));
         IntOption    cpu_lim("MAIN", "cpu-lim","Limit on CPU time allowed in seconds.\n", INT32_MAX, IntRange(0, INT32_MAX));
         IntOption    mem_lim("MAIN", "mem-lim","Limit on memory usage in megabytes.\n", INT32_MAX, IntRange(0, INT32_MAX));
+        StringOption polarity_hints("HINT", "polarity-hints","Read variable polarities from file.");
+        StringOption order_hints("HINT", "order-hints","Read custom branch order from file.");
         
         parseOptions(argc, argv, true);
 
@@ -142,7 +144,59 @@ int main(int argc, char** argv)
         if (S.verbosity > 0){
             printf("|  Parse time:           %12.2f s                                       |\n", parsed_time - initial_time);
             printf("|                                                                             |\n"); }
- 
+
+        // set default polarities, if requested
+        if(polarity_hints != NULL){
+            gzFile hints_in = gzopen(polarity_hints, "rb");
+            StreamBuffer hints_buffer(hints_in);
+
+            while(!isEof(hints_buffer)){
+                int v = parseInt(hints_buffer) - 1;
+                int p = parseInt(hints_buffer);
+
+                skipWhitespace(hints_buffer);
+
+                if(v < 0 || v >= S.nVars()){
+                    printf("WARNING! Variable index invalid.\n");
+                }
+                else {
+                    if(p == 0){
+                        //S.setPolarity(v, l_True);
+                        S.setWeakPolarity(v, l_True);
+                    }
+                    else if(p == 1){
+                        //S.setPolarity(v, l_False);
+                        S.setWeakPolarity(v, l_False);
+                    }
+                    else{
+                        printf("ERROR! Polarity must be 0 or 1.\n");
+                        exit(1);
+                    }
+                }
+            }
+        }
+
+        // set custom branch order, if requested
+        if(order_hints != NULL){
+            gzFile hints_in = gzopen(order_hints, "rb");
+            StreamBuffer hints_buffer(hints_in);
+
+            while(!isEof(hints_buffer)){
+                int v = parseInt(hints_buffer) - 1;
+
+                skipWhitespace(hints_buffer);
+
+                if(v < 0 || v >= S.nVars()){
+                    printf("WARNING! Variable index invalid.\n");
+                }
+                else {
+                    S.customBranchOrder.push(v);
+                }
+            }
+
+            //printf("customBranchOrder.size() == %i", S.customBranchOrder.size());
+        }
+
         // Change to signal-handlers that will only notify the solver and allow it to terminate
         // voluntarily:
         signal(SIGINT, SIGINT_interrupt);

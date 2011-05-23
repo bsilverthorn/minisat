@@ -22,6 +22,7 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 
 #include "minisat/mtl/Sort.h"
 #include "minisat/core/Solver.h"
+#include <iostream>
 
 using namespace Minisat;
 
@@ -233,6 +234,10 @@ Lit Solver::pickBranchLit()
         if (value(next) == l_Undef && decision[next])
             rnd_decisions++; }
 
+    // custom branch-order decision
+    if(this->customBranchOrder.size() > decisionLevel())
+        next = customBranchOrder[decisionLevel()];
+
     // Activity based decision:
     while (next == var_Undef || value(next) != l_Undef || !decision[next])
         if (order_heap.empty()){
@@ -242,14 +247,20 @@ Lit Solver::pickBranchLit()
             next = order_heap.removeMin();
 
     // Choose polarity based on different polarity modes (global or per-variable):
+    //std::cout << "Picking a polarity for " << next << "...\n";
+
     if (next == var_Undef)
         return lit_Undef;
-    else if (user_pol[next] != l_Undef)
+    else if (user_pol[next] != l_Undef) {
+        //std::cout << "setting " << next << " to " << (user_pol[next] == l_True) << " (userpol)\n";
         return mkLit(next, user_pol[next] == l_True);
+    }
     else if (rnd_pol)
         return mkLit(next, drand(random_seed) < 0.5);
-    else
+    else {
+        //std::cout << "setting " << next << " to " << (polarity[next] == true) << " (else)\n";
         return mkLit(next, polarity[next]);
+    }
 }
 
 
@@ -632,12 +643,16 @@ lbool Solver::search(int nof_conflicts)
         CRef confl = propagate();
         if (confl != CRef_Undef){
             // CONFLICT
+            //std::cout << "conflict! (level " << decisionLevel() << ")\n";
             conflicts++; conflictC++;
             if (decisionLevel() == 0) return l_False;
 
             learnt_clause.clear();
             analyze(confl, learnt_clause, backtrack_level);
             cancelUntil(backtrack_level);
+
+            //std::cout << "learnt clause size: " << learnt_clause.size() << "\n";
+            //std::cout << "learnt clause literal: " << var(learnt_clause[0]) << " " << sign(learnt_clause[0]) << "\n";
 
             if (learnt_clause.size() == 1){
                 uncheckedEnqueue(learnt_clause[0]);
@@ -666,6 +681,7 @@ lbool Solver::search(int nof_conflicts)
 
         }else{
             // NO CONFLICT
+            //std::cout << "no conflict! (level " << decisionLevel() << ")\n";
             if (nof_conflicts >= 0 && conflictC >= nof_conflicts || !withinBudget()){
                 // Reached bound on number of conflicts:
                 progress_estimate = progressEstimate();
@@ -784,6 +800,14 @@ lbool Solver::solve_()
         status = search(rest_base * restart_first);
         if (!withinBudget()) break;
         curr_restarts++;
+
+        //// clear the custom branch order
+        //this->customBranchOrder.clear();
+
+        //// clear the user polarities
+        //for(int i = 0; i < this->user_pol.size(); ++i) {
+            //this->user_pol[i] = l_Undef;
+        //}
     }
 
     if (verbosity >= 1)

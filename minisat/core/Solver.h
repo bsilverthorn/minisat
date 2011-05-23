@@ -138,6 +138,10 @@ public:
     uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts;
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
 
+    vec<Var> customBranchOrder; // XXX
+
+    void setWeakPolarity(Var v, lbool b) { this->polarity[v] = (b == l_True); }
+
 protected:
 
     // Helper structures:
